@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA Roster Explorer | RAFAEL P. MAGPILE</title>
+<style>
+  :root {
+    --bg: #12141c;
+    --panel: #1a1d27;
+    --panel-2: #22252f;
+    --border: #2e3240;
+    --text: #e8e9f0;
+    --text-dim: #9a9db1;
+    --accent: #e74c3c;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    height: 100vh;
+    display: flex;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ─────────────────────────────── */
+  .sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 10px 30px;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 8px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px 18px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0.5px;
+  }
+
+  .brand .ball {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #f57c3b, #d35400 70%);
+    flex-shrink: 0;
+  }
+
+  .conf-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    padding: 14px 12px 6px;
+  }
+
+  .team-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    padding: 7px 9px;
+    cursor: pointer;
+    color: var(--text);
+    text-align: left;
+    transition: background 0.15s;
+  }
+
+  .team-btn:hover { background: var(--panel-2); }
+  .team-btn img { width: 26px; height: 26px; flex-shrink: 0; }
+
+  .team-btn .t-city { font-size: 11px; color: var(--text-dim); line-height: 1.2; }
+  .team-btn .t-name { font-size: 13.5px; font-weight: 600; line-height: 1.2; }
+  .team-btn .t-abbr {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .team-btn.active {
+    background: var(--panel-2);
+    border-left-color: var(--team-color, var(--accent));
+  }
+  .team-btn.active .t-name { color: var(--team-color, var(--text)); }
+
+  /* ── Main ────────────────────────────────── */
+  .main { flex: 1; overflow-y: auto; padding: 24px 28px 40px; }
+  .main::-webkit-scrollbar { width: 10px; }
+  .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+
+  .team-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 6px;
+  }
+
+  .team-header img { width: 64px; height: 64px; }
+
+  .team-header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+  .team-header h1 span { color: var(--team-color, var(--text)); }
+
+  .team-meta { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+  .team-meta b { color: var(--text); font-weight: 600; }
+
+  .refresh-btn {
+    margin-left: auto;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover { color: var(--text); border-color: var(--team-color, var(--accent)); }
+
+  /* ── Controls ────────────────────────────── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 18px 0 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13.5px;
+    padding: 8px 12px;
+    width: 210px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search:focus { border-color: var(--team-color, var(--accent)); }
+  .search::placeholder { color: var(--text-dim); }
+
+  .chip {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 13px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { color: var(--text); }
+  .chip.on {
+    background: var(--team-color, var(--accent));
+    border-color: var(--team-color, var(--accent));
+    color: #fff;
+  }
+
+  .divider { width: 1px; height: 22px; background: var(--border); }
+
+  .sort-label { font-size: 11px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+
+  .sort-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sort-btn:hover { color: var(--text); }
+  .sort-btn.on { color: var(--team-color, var(--accent)); background: var(--panel-2); }
+
+  .count-note { margin-left: auto; font-size: 12.5px; color: var(--text-dim); }
+
+  /* ── Roster grid ─────────────────────────── */
+  .roster {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 14px 14px;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+    text-align: left;
+    color: var(--text);
+    font-family: inherit;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--team-color, var(--accent));
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  .card .jersey {
+    position: absolute;
+    top: 10px; right: 12px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-dim);
+    opacity: 0.35;
+  }
+
+  .card .photo {
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .card .photo img { width: 100%; height: auto; display: block; }
+  .card .photo .fallback {
+    width: 60%; height: 78%;
+    border-radius: 50% 50% 0 0;
+    background: #3a3e4d;
+    margin-bottom: -4px;
+  }
+
+  .card .p-name { font-size: 15px; font-weight: 700; line-height: 1.25; }
+  .card .p-pos { font-size: 12px; color: var(--team-color, var(--accent)); font-weight: 700; margin-top: 2px; }
+  .card .p-stats { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.55; }
+
+  .card .badge {
+    position: absolute;
+    bottom: 10px; right: 12px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 10px;
+    background: #e5484d22;
+    color: #ff6b70;
+  }
+
+  /* ── States ──────────────────────────────── */
+  .state {
+    padding: 80px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 42px; height: 42px;
+    border: 3px solid var(--border);
+    border-top-color: var(--team-color, var(--accent));
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .retry-btn {
+    margin-top: 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .retry-btn:hover { border-color: var(--team-color, var(--accent)); }
+
+  /* ── Modal ───────────────────────────────── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+  .overlay.hidden { display: none; }
+
+  .modal {
+    width: 420px;
+    max-width: calc(100vw - 40px);
+    max-height: 85vh;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--team-color, var(--accent));
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+  }
+
+  .modal .close {
+    position: absolute;
+    top: 14px; right: 14px;
+    background: var(--panel-2);
+    border: none;
+    color: var(--text-dim);
+    font-size: 15px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .modal .close:hover { color: var(--text); background: var(--border); }
+
+  .modal .head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .modal .head img { width: 84px; height: 84px; }
+  .modal .head .no {
+    font-size: 13px; font-weight: 700;
+    color: var(--team-color, var(--accent));
+  }
+  .modal .head h2 { font-size: 21px; font-weight: 800; line-height: 1.2; }
+  .modal .head .sub { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+    margin-bottom: 18px;
+  }
+  .detail-grid .d-label {
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+  }
+  .detail-grid .d-value { font-size: 13.5px; font-weight: 600; }
+
+  .modal h3 {
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .contract-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    background: var(--panel-2);
+    margin-bottom: 6px;
+  }
+  .contract-row .season { color: var(--text-dim); font-weight: 600; }
+  .contract-row .salary { font-weight: 700; }
+  .contract-row.current { outline: 1px solid var(--team-color, var(--accent)); }
+
+  .salary-hero {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--team-color, var(--accent));
+    margin-bottom: 16px;
+  }
+  .salary-hero small { font-size: 11px; color: var(--text-dim); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; display: block; }
+
+  /* ── Publisher credit ────────────────────── */
+  .publisher {
+    margin-top: 22px;
+    padding: 14px 12px 4px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .publisher .pub-label {
+    font-size: 9.5px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .publisher .pub-name {
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--accent);
+  }
+
+  /* ── Responsive ──────────────────────────── */
+  @media (max-width: 780px) {
+    body { flex-direction: column; }
+    .sidebar {
+      width: 100%;
+      max-height: 34vh;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+  }
+</style>
+</head>
+<body>
+  <nav class="sidebar" id="sidebar">
+    <div class="brand"><div class="ball"></div>NBA Roster Explorer</div>
+    <div id="teamList"></div>
+    <div class="publisher">
+      <div class="pub-label">Published by</div>
+      <div class="pub-name">RAFAEL P. MAGPILE</div>
+    </div>
+  </nav>
+
+  <main class="main" id="main">
+    <div class="team-header" id="teamHeader"></div>
+    <div class="controls" id="controls" style="display:none">
+      <input class="search" id="search" type="text" placeholder="Search players...">
+      <button class="chip on" data-pos="All">All</button>
+      <button class="chip" data-pos="G">Guards</button>
+      <button class="chip" data-pos="F">Forwards</button>
+      <button class="chip" data-pos="C">Centers</button>
+      <div class="divider"></div>
+      <span class="sort-label">Sort</span>
+      <button class="sort-btn on" data-sort="jersey">#</button>
+      <button class="sort-btn" data-sort="name">Name</button>
+      <button class="sort-btn" data-sort="age">Age</button>
+      <button class="sort-btn" data-sort="exp">Exp</button>
+      <span class="count-note" id="countNote"></span>
+    </div>
+    <div id="rosterArea"><div class="state">Select a team to view its roster</div></div>
+  </main>
+
+  <div class="overlay hidden" id="overlay">
+    <div class="modal" id="modal"></div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Static team data (ESPN team IDs, colors and logos) ──
+  const TEAMS = [
+    {id:1,abbr:"ATL",city:"Atlanta",name:"Hawks",color:"c8102e"},
+    {id:2,abbr:"BOS",city:"Boston",name:"Celtics",color:"008348"},
+    {id:3,abbr:"NO",city:"New Orleans",name:"Pelicans",color:"0a2240"},
+    {id:4,abbr:"CHI",city:"Chicago",name:"Bulls",color:"ce1141"},
+    {id:5,abbr:"CLE",city:"Cleveland",name:"Cavaliers",color:"860038"},
+    {id:6,abbr:"DAL",city:"Dallas",name:"Mavericks",color:"0064b1"},
+    {id:7,abbr:"DEN",city:"Denver",name:"Nuggets",color:"0e2240"},
+    {id:8,abbr:"DET",city:"Detroit",name:"Pistons",color:"1d428a"},
+    {id:9,abbr:"GS",city:"Golden State",name:"Warriors",color:"fdb927"},
+    {id:10,abbr:"HOU",city:"Houston",name:"Rockets",color:"ce0e2d"},
+    {id:11,abbr:"IND",city:"Indiana",name:"Pacers",color:"0c2340"},
+    {id:12,abbr:"LAC",city:"LA",name:"Clippers",color:"12173f"},
+    {id:13,abbr:"LAL",city:"Los Angeles",name:"Lakers",color:"552583"},
+    {id:14,abbr:"MIA",city:"Miami",name:"Heat",color:"98002e"},
+    {id:15,abbr:"MIL",city:"Milwaukee",name:"Bucks",color:"00471b"},
+    {id:16,abbr:"MIN",city:"Minnesota",name:"Timberwolves",color:"266092"},
+    {id:17,abbr:"BKN",city:"Brooklyn",name:"Nets",color:"000000"},
+    {id:18,abbr:"NY",city:"New York",name:"Knicks",color:"1d428a"},
+    {id:19,abbr:"ORL",city:"Orlando",name:"Magic",color:"0150b5"},
+    {id:20,abbr:"PHI",city:"Philadelphia",name:"76ers",color:"1d428a"},
+    {id:21,abbr:"PHX",city:"Phoenix",name:"Suns",color:"29127a"},
+    {id:22,abbr:"POR",city:"Portland",name:"Trail Blazers",color:"e03a3e"},
+    {id:23,abbr:"SAC",city:"Sacramento",name:"Kings",color:"5a2d81"},
+    {id:24,abbr:"SA",city:"San Antonio",name:"Spurs",color:"000000"},
+    {id:25,abbr:"OKC",city:"Oklahoma City",name:"Thunder",color:"007ac1"},
+    {id:26,abbr:"UTAH",city:"Utah",name:"Jazz",color:"4e008e"},
+    {id:27,abbr:"WSH",city:"Washington",name:"Wizards",color:"e31837"},
+    {id:28,abbr:"TOR",city:"Toronto",name:"Raptors",color:"d91244"},
+    {id:29,abbr:"MEM",city:"Memphis",name:"Grizzlies",color:"5d76a9"},
+    {id:30,abbr:"CHA",city:"Charlotte",name:"Hornets",color:"008ca8"}
+  ];
+  TEAMS.forEach(t => { t.logo = "https://a.espncdn.com/i/teamlogos/nba/500/" + t.abbr.toLowerCase() + ".png"; });
+
+  const EAST = new Set([1,2,4,5,8,11,14,15,17,18,19,20,27,28,30]);
+  const API = id => "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/" + id + "/roster";
+
+  // ── DOM refs ──
+  const teamList = document.getElementById("teamList");
+  const teamHeader = document.getElementById("teamHeader");
+  const controls = document.getElementById("controls");
+  const search = document.getElementById("search");
+  const countNote = document.getElementById("countNote");
+  const rosterArea = document.getElementById("rosterArea");
+  const overlay = document.getElementById("overlay");
+  const modal = document.getElementById("modal");
+  const root = document.documentElement;
+
+  // ── App state ──
+  let cache = {};          // teamId -> players array
+  let activeTeam = null;
+  let posFilter = "All";
+  let sortKey = "jersey";
+  let currentPlayers = [];
+
+  // ── Auto-save state (localStorage) ──
+  const SAVE_KEY = "nbaRosterExplorerState";
+  function saveState() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        team: activeTeam, pos: posFilter, sort: sortKey, savedAt: Date.now()
+      }));
+    } catch (e) { /* storage unavailable — ignore */ }
+  }
+  function loadSavedState() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (s && TEAMS.some(t => t.id === s.team)) return s;
+    } catch (e) { /* corrupted or unavailable — ignore */ }
+    return null;
+  }
+
+  const money = n => "$" + Number(n).toLocaleString("en-US");
+  const teamColor = id => {
+    const t = TEAMS.find(t => t.id === id);
+    const c = t ? t.color : "000000";
+    return c === "000000" ? "8899aa" : c;   // readable accent on dark bg
+  };
+
+  // ── Sidebar ──
+  function buildSidebar() {
+    const groups = [
+      { label: "Eastern Conference", ids: TEAMS.filter(t => EAST.has(t.id)) },
+      { label: "Western Conference", ids: TEAMS.filter(t => !EAST.has(t.id)) }
+    ];
+    teamList.innerHTML = groups.map(g =>
+      '<div class="conf-label">' + g.label + "</div>" +
+      g.ids.map(t =>
+        '<button class="team-btn" data-team="' + t.id + '" style="--team-color:#' + teamColor(t.id) + '">' +
+          '<img src="' + t.logo + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
+          '<div><div class="t-city">' + t.city + '</div><div class="t-name">' + t.name + "</div></div>" +
+          '<span class="t-abbr">' + t.abbr + "</span>" +
+        "</button>"
+      ).join("")
+    ).join("");
+
+    teamList.querySelectorAll("[data-team]").forEach(btn =>
+      btn.addEventListener("click", () => selectTeam(Number(btn.dataset.team)))
+    );
+  }
+
+  // ── Roster loading ──
+  async function selectTeam(id) {
+    activeTeam = id;
+    saveState();
+    document.querySelectorAll(".team-btn").forEach(b =>
+      b.classList.toggle("active", Number(b.dataset.team) === id)
+    );
+    const team = TEAMS.find(t => t.id === id);
+    root.style.setProperty("--team-color", "#" + teamColor(id));
+
+    teamHeader.innerHTML =
+      '<img src="' + team.logo + '" alt="">' +
+      '<div><h1>' + team.city + ' <span>' + team.name + "</span>" +
+      '<div class="team-meta" id="teamMeta"><b id="metaLine">Loading roster...</b></div></div>' +
+      '<button class="refresh-btn" id="refreshBtn">Refresh</button>';
+
+    document.getElementById("refreshBtn").addEventListener("click", () => {
+      delete cache[id];
+      selectTeam(id);
+    });
+
+    if (cache[id]) {
+      renderRoster(team, cache[id]);
+      return;
+    }
+
+    controls.style.display = "none";
+    rosterArea.innerHTML = '<div class="state"><div class="spinner"></div>Loading ' + team.name + ' roster...</div>';
+
+    try {
+      const res = await fetch(API(id));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      const coach = data.coach && (data.coach.displayName || data.coach.fullName) || "";
+      const seasonYear = (data.season && data.season.year) || new Date().getFullYear();
+      const seasonLabel = (seasonYear - 1) + "\u2013" + String(seasonYear).slice(2) + " Season";
+
+      const players = (data.athletes || []).map(a => {
+        const cur = (a.contracts || []).find(c => c.season && c.season.year === seasonYear) || {};
+        return {
+          id: a.id,
+          name: a.fullName,
+          jersey: (a.jersey || "").trim(),
+          pos: (a.position && a.position.abbreviation) || "",
+          height: a.displayHeight || "",
+          weight: a.displayWeight || "",
+          age: a.age,
+          dob: a.dateOfBirth || "",
+          birth: a.birthPlace ? [a.birthPlace.city, a.birthPlace.state, a.birthPlace.country].filter(Boolean).join(", ") : "",
+          hand: a.hand ? a.hand.displayValue : "",
+          debut: a.debutYear,
+          exp: a.experience ? a.experience.years : null,
+          status: (a.status && a.status.name) || "Active",
+          headshot: a.headshot ? a.headshot.href : "",
+          salary: cur.salary || null,
+          contracts: (a.contracts || []).map(c => ({ year: c.season.year, salary: c.salary }))
+        };
+      });
+
+      cache[id] = { players, coach, seasonLabel };
+      if (activeTeam === id) renderRoster(team, cache[id]);
+    } catch (err) {
+      if (activeTeam === id) {
+        rosterArea.innerHTML =
+          '<div class="state">Couldn\u2019t load the roster.<br>Check your internet connection.' +
+          '<br><button class="retry-btn" id="retryBtn">Retry</button></div>';
+        document.getElementById("retryBtn").addEventListener("click", () => {
+          delete cache[id];
+          selectTeam(id);
+        });
+      }
+    }
+  }
+
+  // ── Roster rendering ──
+  function renderRoster(team, info) {
+    currentPlayers = info.players;
+    controls.style.display = "flex";
+    search.value = "";
+
+    const meta = document.getElementById("teamMeta");
+    const payroll = info.players.reduce((s, p) => s + (p.salary || 0), 0);
+    const ages = info.players.filter(p => p.age).map(p => p.age);
+    const avgAge = ages.length ? (ages.reduce((a, b) => a + b, 0) / ages.length).toFixed(1) : "\u2014";
+    meta.innerHTML = "<b>" + info.seasonLabel + "</b>" +
+      (info.coach ? " &nbsp;\u2022&nbsp; Coach: <b>" + info.coach + "</b>" : "") +
+      " &nbsp;\u2022&nbsp; " + info.players.length + " players &nbsp;\u2022&nbsp; Avg age " + avgAge +
+      (payroll ? " &nbsp;\u2022&nbsp; Est. payroll " + money(payroll) : "");
+
+    renderCards();
+  }
+
+  function renderCards() {
+    const q = search.value.trim().toLowerCase();
+    let list = currentPlayers.filter(p => {
+      const posMatch = posFilter === "All" || (p.pos && p.pos.startsWith(posFilter));
+      const qMatch = !q || p.name.toLowerCase().includes(q);
+      return posMatch && qMatch;
+    });
+
+    const jerseyNum = p => (p.jersey === "" || p.jersey == null) ? 999 : Number(p.jersey);
+    list.sort((a, b) => {
+      if (sortKey === "jersey") return jerseyNum(a) - jerseyNum(b);
+      if (sortKey === "name") return a.name.localeCompare(b.name);
+      if (sortKey === "age") return (a.age || 99) - (b.age || 99);
+      if (sortKey === "exp") return (b.exp || 0) - (a.exp || 0);
+      return 0;
+    });
+
+    countNote.textContent = list.length + " of " + currentPlayers.length + " players";
+
+    if (!list.length) {
+      rosterArea.innerHTML = '<div class="state">No players match your filters.</div>';
+      return;
+    }
+
+    rosterArea.innerHTML = '<div class="roster">' + list.map(p =>
+      '<button class="card" data-player="' + p.id + '">' +
+        '<span class="jersey">' + (p.jersey || "") + "</span>" +
+        '<div class="photo">' + (p.headshot
+          ? '<img src="' + p.headshot + '" alt="" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=fallback></div>\'">'
+          : '<div class="fallback"></div>') + "</div>" +
+        '<div class="p-name">' + p.name + "</div>" +
+        '<div class="p-pos">' + (p.pos || "\u2014") + "</div>" +
+        '<div class="p-stats">' +
+          (p.height ? p.height + " &nbsp;\u2022&nbsp; " + p.weight : "") +
+          (p.age ? "<br>Age " + p.age : "") +
+          (p.exp != null ? " &nbsp;\u2022&nbsp; " + p.exp + " yr" + (p.exp === 1 ? "" : "s") + " exp" : "") +
+        "</div>" +
+        (p.status !== "Active" ? '<span class="badge">' + p.status + "</span>" : "") +
+      "</button>"
+    ).join("") + "</div>";
+
+    rosterArea.querySelectorAll("[data-player]").forEach(card =>
+      card.addEventListener("click", () => {
+        const p = currentPlayers.find(x => String(x.id) === card.dataset.player);
+        if (p) openModal(p);
+      })
+    );
+  }
+
+  // ── Player modal ──
+  function openModal(p) {
+    const team = TEAMS.find(t => t.id === activeTeam);
+    const dob = p.dob ? new Date(p.dob).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "\u2014";
+    const seasons = p.contracts.sort((a, b) => a.year - b.year);
+    const maxYear = Math.max(0, ...seasons.map(c => c.year));
+
+    modal.innerHTML =
+      '<button class="close" id="closeModal">\u2715</button>' +
+      '<div class="head">' +
+        (p.headshot ? '<img src="' + p.headshot + '" alt="">' : "") +
+        '<div><div class="no">#' + (p.jersey || "\u2014") + " &nbsp;\u2022&nbsp; " + (p.pos || "") + "</div>" +
+        "<h2>" + p.name + "</h2>" +
+        '<div class="sub">' + team.city + " " + team.name + "</div></div>" +
+      "</div>" +
+      '<div class="salary-hero"><small>Salary this season</small>' +
+        (p.salary ? money(p.salary) : "Not available") + "</div>" +
+      '<div class="detail-grid">' +
+        dv("Height", p.height || "\u2014") + dv("Weight", p.weight || "\u2014") +
+        dv("Age", p.age != null ? p.age : "\u2014") + dv("Born", dob) +
+        dv("Birthplace", p.birth || "\u2014") + dv("Shoots / Catches", p.hand || "\u2014") +
+        dv("NBA debut", p.debut || "\u2014") + dv("Experience", p.exp != null ? p.exp + " year" + (p.exp === 1 ? "" : "s") : "\u2014") +
+      "</div>" +
+      (seasons.length ? "<h3>Contract history</h3>" +
+        seasons.map(c =>
+          '<div class="contract-row' + (c.year === maxYear ? " current" : "") + '">' +
+            '<span class="season">' + (c.year - 1) + "\u2013" + String(c.year).slice(2) + "</span>" +
+            '<span class="salary">' + (c.salary ? money(c.salary) : "\u2014") + "</span>" +
+          "</div>"
+        ).join("") : "");
+
+    overlay.classList.remove("hidden");
+    document.getElementById("closeModal").addEventListener("click", closeModal);
+  }
+
+  function dv(label, value) {
+    return '<div><div class="d-label">' + label + '</div><div class="d-value">' + value + "</div></div>";
+  }
+
+  function closeModal() { overlay.classList.add("hidden"); }
+
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+  // ── Controls wiring ──
+  search.addEventListener("input", renderCards);
+  document.querySelectorAll(".chip").forEach(chip =>
+    chip.addEventListener("click", () => {
+      posFilter = chip.dataset.pos;
+      saveState();
+      document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === chip));
+      renderCards();
+    })
+  );
+  document.querySelectorAll(".sort-btn").forEach(btn =>
+    btn.addEventListener("click", () => {
+      sortKey = btn.dataset.sort;
+      saveState();
+      document.querySelectorAll(".sort-btn").forEach(b => b.classList.toggle("on", b === btn));
+      renderCards();
+    })
+  );
+
+  // ── Boot (restore auto-saved state if available) ──
+  buildSidebar();
+  const saved = loadSavedState();
+  if (saved) {
+    posFilter = saved.pos || "All";
+    sortKey = saved.sort || "jersey";
+    document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c.dataset.pos === posFilter));
+    document.querySelectorAll(".sort-btn").forEach(b => b.classList.toggle("on", b.dataset.sort === sortKey));
+    selectTeam(saved.team);
+  } else {
+    selectTeam(1);   // open Atlanta Hawks by default
+  }
+})();
+</script>
+</body>
+</html>
